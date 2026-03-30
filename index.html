@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>カルテチェックアプリ</title>
+<title>カルテチェック完全版</title>
 
 <style>
 :root{
@@ -11,16 +11,13 @@
   --bg:#f9f9fb;
   --text:14px;
 }
-
 body{
   font-family:sans-serif;
   background:var(--bg);
   padding:10px;
   font-size:var(--text);
 }
-
 h2{text-align:center;}
-
 .card{
   background:#fff;
   border-radius:15px;
@@ -28,7 +25,6 @@ h2{text-align:center;}
   margin-bottom:10px;
   box-shadow:0 2px 8px rgba(0,0,0,0.1);
 }
-
 input,textarea,select{
   width:100%;
   padding:8px;
@@ -36,7 +32,6 @@ input,textarea,select{
   border-radius:8px;
   border:1px solid #ccc;
 }
-
 button{
   width:100%;
   padding:10px;
@@ -46,18 +41,6 @@ button{
   background:var(--main);
   color:white;
 }
-
-.small-btn{
-  width:auto;
-  padding:5px 10px;
-}
-
-.list-item{
-  border-bottom:1px solid #eee;
-  padding:5px;
-  cursor:pointer;
-}
-
 .day-box{
   display:flex;
   flex-wrap:wrap;
@@ -65,12 +48,12 @@ button{
 .day-box label{
   width:60px;
 }
-
-.tab{
-  display:flex;
-}
-.tab button{
-  flex:1;
+.tab{display:flex;}
+.tab button{flex:1;}
+.list-item{
+  border-bottom:1px solid #eee;
+  padding:5px;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -90,20 +73,13 @@ button{
 <!-- 日次 -->
 <div id="daily" class="card">
 
-<h3>📅 日次入力</h3>
-
-<select id="mode">
-<option value="new">新規入力</option>
-<option value="continue">連続入力</option>
-</select>
+<h3>📅 日次</h3>
 
 <input type="date" id="date">
 <input placeholder="患者名" id="patient">
 <input placeholder="看護師" id="nurse">
 
-<h4>チェック項目</h4>
-<textarea id="check"></textarea>
-
+<textarea placeholder="チェック項目" id="check"></textarea>
 <textarea placeholder="経過記録" id="record"></textarea>
 <textarea placeholder="備考" id="note"></textarea>
 
@@ -111,26 +87,27 @@ button{
 <label><input type="checkbox" id="confirm"> 修正確認</label>
 <label><input type="checkbox" id="同行"> 同行</label>
 
-<input type="file" id="photo">
-
-<h4>確認日チェック</h4>
+<h4>確認日</h4>
 <div class="day-box" id="days"></div>
 
 <button onclick="saveDaily()">保存</button>
-
 </div>
 
 <!-- 月次 -->
 <div id="monthly" class="card" style="display:none;">
+
 <h3>📅 月次</h3>
 
+<input type="month" id="m_month">
 <input placeholder="患者名" id="m_patient">
-<input placeholder="2026年3月" id="m_month">
 
 <label><input type="checkbox" id="rep"> 報告書</label>
 <label><input type="checkbox" id="plan"> 計画評価</label>
 <label><input type="checkbox" id="bedsore"> 褥瘡評価</label>
 <label><input type="checkbox" id="next"> 次月計画</label>
+
+<h4>実施日チェック</h4>
+<div class="day-box" id="m_days"></div>
 
 <button onclick="saveMonthly()">保存</button>
 </div>
@@ -143,24 +120,20 @@ button{
 
 <!-- 統計 -->
 <div id="stats" class="card" style="display:none;">
-<h3>📊 統計</h3>
-<canvas id="chart"></canvas>
+<h3>📊 統計（抜けチェック）</h3>
+<div id="statsData"></div>
+<button onclick="exportStats()">📄 出力</button>
 </div>
 
 <!-- 設定 -->
 <div id="settings" class="card" style="display:none;">
 <h3>⚙️ 設定</h3>
-
-<label>テーマカラー</label>
 <input type="color" onchange="changeColor(this.value)">
-
-<label>文字サイズ</label>
 <select onchange="changeSize(this.value)">
 <option value="12px">小</option>
 <option value="14px">中</option>
 <option value="18px">大</option>
 </select>
-
 <button onclick="resetAll()">全削除</button>
 </div>
 
@@ -168,68 +141,55 @@ button{
 let dailyData = JSON.parse(localStorage.getItem("daily")||"[]");
 let monthlyData = JSON.parse(localStorage.getItem("monthly")||"[]");
 
+/* タブ */
 function showTab(id){
   ["daily","monthly","list","stats","settings"].forEach(t=>{
     document.getElementById(t).style.display="none";
   });
   document.getElementById(id).style.display="block";
   if(id==="list") renderList();
-  if(id==="stats") renderChart();
+  if(id==="stats") renderStats();
 }
 
 /* 日付チェック生成 */
 for(let i=1;i<=31;i++){
-  document.getElementById("days").innerHTML +=
-    `<label><input type="checkbox" class="dayCheck" value="${i}"> ${i}日</label>`;
+  days.innerHTML+=`<label><input type="checkbox" value="${i}">${i}</label>`;
+  m_days.innerHTML+=`<label><input type="checkbox" value="${i}">${i}</label>`;
 }
 
+/* 保存 */
 function saveDaily(){
-  let days=[];
-  document.querySelectorAll(".dayCheck").forEach(el=>{
-    if(el.checked) days.push(el.value);
-  });
-
-  const reader = new FileReader();
-  let file = document.getElementById("photo").files[0];
-
-  if(file){
-    reader.onload=function(){
-      save(reader.result);
-    }
-    reader.readAsDataURL(file);
-  }else{
-    save("");
-  }
-
-  function save(img){
-    let data={
-      id:Date.now(),
-      date:date.value,
-      patient:patient.value,
-      nurse:nurse.value,
-      check:check.value,
-      record:record.value,
-      note:note.value,
-      fix:fix.checked,
-      confirm:confirm.checked,
-     同行:同行.checked,
-      days:days,
-      img:img
-    };
-    dailyData.push(data);
-    localStorage.setItem("daily",JSON.stringify(dailyData));
-    alert("保存OK");
-  }
+  let data={
+    id:Date.now(),
+    date:date.value,
+    patient:patient.value,
+    nurse:nurse.value,
+    check:check.value,
+    record:record.value,
+    note:note.value,
+    fix:fix.checked,
+    confirm:confirm.checked,
+    同行:同行.checked
+  };
+  dailyData.push(data);
+  localStorage.setItem("daily",JSON.stringify(dailyData));
+  alert("保存OK");
 }
 
 function saveMonthly(){
+  let days=[];
+  document.querySelectorAll("#m_days input").forEach(el=>{
+    if(el.checked) days.push(el.value);
+  });
+
   let data={
     patient:m_patient.value,
     month:m_month.value,
     rep:rep.checked,
     plan:plan.checked,
     bedsore:bedsore.checked,
-    next:next.checked
+    next:next.checked,
+    days:days
   };
   monthlyData.push(data);
   localStorage.setItem("monthly",JSON.stringify(monthlyData));
@@ -240,43 +200,45 @@ function saveMonthly(){
 function renderList(){
   let html="";
   dailyData.forEach(d=>{
-    html+=`
-    <div class="list-item" onclick="loadDaily(${d.id})">
-    ${d.date}｜${d.patient}｜${d.nurse}
-    </div>`;
+    html+=`<div class="list-item">${d.date}｜${d.patient}｜${d.nurse}</div>`;
   });
   listData.innerHTML=html;
 }
 
-function loadDaily(id){
-  let d = dailyData.find(x=>x.id===id);
-  showTab("daily");
+/* 統計（抜け） */
+function renderStats(){
+  let html="";
+  let missing=[];
 
-  date.value=d.date;
-  patient.value=d.patient;
-  nurse.value=d.nurse;
-  check.value=d.check;
-  record.value=d.record;
-  note.value=d.note;
-
-  fix.checked=d.fix;
-  confirm.checked=d.confirm;
-}
-
-/* 統計 */
-function renderChart(){
-  let count={};
   dailyData.forEach(d=>{
-    count[d.patient]=(count[d.patient]||0)+1;
+    let m=[];
+    if(!d.check) m.push("チェック");
+    if(!d.record) m.push("経過");
+    if(!d.note) m.push("備考");
+    if(!d.fix) m.push("修正連絡");
+    if(!d.confirm) m.push("修正確認");
+
+    if(m.length>0){
+      missing.push(`${d.date} ${d.patient} → ${m.join(",")}`);
+    }
   });
 
-  let ctx=document.getElementById("chart");
-  let html="<ul>";
-  for(let k in count){
-    html+=`<li>${k}: ${count[k]}件</li>`;
-  }
-  html+="</ul>";
-  document.getElementById("stats").innerHTML=html;
+  html+="<h4>抜け一覧</h4>";
+  missing.forEach(x=> html+=`<div>${x}</div>`);
+
+  html+=`<h4>総件数：${dailyData.length}</h4>`;
+
+  statsData.innerHTML=html;
+}
+
+/* 出力 */
+function exportStats(){
+  let text="";
+  dailyData.forEach(d=>{
+    text+=`${d.date} ${d.patient}\n`;
+  });
+  navigator.clipboard.writeText(text);
+  alert("コピーしました");
 }
 
 /* 設定 */
@@ -288,7 +250,6 @@ function changeSize(s){
 }
 function resetAll(){
   localStorage.clear();
-  alert("全削除");
   location.reload();
 }
 </script>
