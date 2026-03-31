@@ -3,346 +3,195 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>カルテチェック完全版</title>
-
+<title>カルテチェックアプリ 完全版</title>
 <style>
-:root{
-  --main:#ff8fab;
-  --bg:#f9f9fb;
-  --text:14px;
-}
-body{
-  font-family:sans-serif;
-  background:var(--bg);
-  padding:10px;
-  font-size:var(--text);
-}
-h2{text-align:center;}
-.card{
-  background:#fff;
-  border-radius:15px;
-  padding:12px;
-  margin-bottom:10px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.1);
-}
-input,textarea,select{
-  width:100%;
-  padding:8px;
-  margin-top:5px;
-  border-radius:8px;
-  border:1px solid #ccc;
-}
-button{
-  width:100%;
-  padding:10px;
-  margin-top:5px;
-  border:none;
-  border-radius:10px;
-  background:var(--main);
-  color:white;
-}
-.tab{display:flex;}
-.tab button{flex:1;}
-.day-box{display:flex;flex-wrap:wrap;}
-.day-box label{width:60px;}
-.list-item{
-  padding:8px;
-  border-bottom:1px solid #eee;
-  cursor:pointer;
-}
-.miss{color:red;font-weight:bold;}
+:root{--main:#6c9cff;--bg:#f5f7fb;--card:#fff}
+body{margin:0;font-family:sans-serif;background:var(--bg)}
+header{background:var(--main);color:#fff;padding:10px;text-align:center}
+.container{padding:10px}
+.card{background:#fff;padding:10px;margin-bottom:10px;border-radius:12px;box-shadow:0 2px 6px rgba(0,0,0,0.1)}
+input,select,textarea,button{width:100%;margin:5px 0;padding:8px;border-radius:8px;border:1px solid #ccc}
+button{background:var(--main);color:#fff;border:none}
+.tab{display:flex}
+.tab button{flex:1;padding:10px;background:#ddd;border:none}
+.tab button.active{background:var(--main);color:#fff}
+.hidden{display:none}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
 </style>
 </head>
-
 <body>
-
-<h2>🏥 カルテチェック完全版</h2>
+<header>カルテチェック</header>
 
 <div class="tab">
-<button onclick="showTab('daily')">日次</button>
+<button onclick="showTab('daily')" id="btnDaily">日次</button>
 <button onclick="showTab('monthly')">月次</button>
 <button onclick="showTab('list')">一覧</button>
 <button onclick="showTab('stats')">統計</button>
 <button onclick="showTab('settings')">設定</button>
 </div>
 
-<!-- 日次 -->
-<div id="daily" class="card">
+<div class="container">
 
-<h3>📅 日次</h3>
-
-<select id="mode">
-<option value="new">新規入力</option>
-<option value="continue">連続入力</option>
-</select>
-
+<div id="daily" class="tabContent">
+<div class="card">
+<h3>日次入力</h3>
+<select id="inputMode"><option value="new">新規入力</option><option value="continuous">連続入力</option></select>
 <input type="date" id="date">
 <input placeholder="患者名" id="patient">
 <input placeholder="看護師" id="nurse">
-
-<textarea placeholder="チェック項目" id="check"></textarea>
-<textarea placeholder="経過記録" id="record"></textarea>
+<textarea placeholder="チェック抜け" id="miss"></textarea>
+<textarea placeholder="経過記録" id="progress"></textarea>
 <textarea placeholder="備考" id="note"></textarea>
-
-<label><input type="checkbox" id="fix"> 修正連絡</label>
-<label><input type="checkbox" id="confirm"> 修正確認</label>
-<label><input type="checkbox" id="同行"> 同行</label>
-
-<input type="file" id="photo">
-
-<h4>確認日</h4>
-<div class="day-box" id="days"></div>
-
+<label><input type="checkbox" id="contact">修正連絡</label>
+<label><input type="checkbox" id="confirm">修正確認</label>
+<label><input type="checkbox" id="同行">同行</label>
 <button onclick="saveDaily()">保存</button>
-<button onclick="deleteDaily()">削除</button>
-
+<div id="dailyCalendar"></div>
+</div>
 </div>
 
-<!-- 月次 -->
-<div id="monthly" class="card" style="display:none;">
-<h3>📅 月次</h3>
-
-<input type="month" id="m_month">
-<input placeholder="患者名" id="m_patient">
-
-<label><input type="checkbox" id="rep"> 報告書</label>
-<label><input type="checkbox" id="plan"> 計画評価</label>
-<label><input type="checkbox" id="bedsore"> 褥瘡評価</label>
-<label><input type="checkbox" id="next"> 次月計画</label>
-
-<h4>実施日</h4>
-<div class="day-box" id="m_days"></div>
-
+<div id="monthly" class="tabContent hidden">
+<div class="card">
+<h3>月次入力</h3>
+<select id="monthPatient"></select>
+<input type="month" id="month">
+<label><input type="checkbox" id="report">報告書</label>
+<label><input type="checkbox" id="plan">計画評価</label>
+<label><input type="checkbox" id="bedsore">褥瘡評価</label>
+<label><input type="checkbox" id="next">次月計画</label>
 <button onclick="saveMonthly()">保存</button>
+<div id="monthCalendar"></div>
+</div>
 </div>
 
-<!-- 一覧 -->
-<div id="list" class="card" style="display:none;">
-<h3>📋 一覧</h3>
-
-<select id="filterPatient" onchange="renderList()"><option value="">全患者</option></select>
-<select id="filterNurse" onchange="renderList()"><option value="">全看護師</option></select>
-
-<div id="listData"></div>
+<div id="list" class="tabContent hidden">
+<div class="card">
+<h3>一覧</h3>
+<input placeholder="患者" id="filterPatient">
+<input placeholder="看護師" id="filterNurse">
+<button onclick="renderList()">表示</button>
+<div id="listArea"></div>
+</div>
 </div>
 
-<!-- 統計 -->
-<div id="stats" class="card" style="display:none;">
-<h3>📊 統計</h3>
-<div id="statsData"></div>
-<button onclick="exportStats()">📄 出力</button>
+<div id="stats" class="tabContent hidden">
+<div class="card">
+<h3>統計</h3>
+<button onclick="calcStats()">集計</button>
+<pre id="statsArea"></pre>
+<button onclick="downloadStats()">出力</button>
+</div>
 </div>
 
-<!-- 設定 -->
-<div id="settings" class="card" style="display:none;">
-<h3>⚙️ 設定</h3>
-<input type="color" onchange="changeColor(this.value)">
-<select onchange="changeSize(this.value)">
-<option value="12px">小</option>
-<option value="14px">中</option>
-<option value="18px">大</option>
-</select>
-<button onclick="resetAll()">全削除</button>
+<div id="settings" class="tabContent hidden">
+<div class="card">
+<h3>設定</h3>
+<input type="color" onchange="setColor(this.value)">
+<input type="range" min="12" max="24" onchange="setFont(this.value)">
+<button onclick="resetData()">全削除</button>
+</div>
+</div>
+
 </div>
 
 <script>
-let dailyData = JSON.parse(localStorage.getItem("daily")||"[]");
-let monthlyData = JSON.parse(localStorage.getItem("monthly")||"[]");
-let currentId=null;
+let daily=JSON.parse(localStorage.getItem('daily')||'[]');
+let monthly=JSON.parse(localStorage.getItem('monthly')||'[]');
 
-/* タブ */
 function showTab(id){
-  ["daily","monthly","list","stats","settings"].forEach(t=>{
-    document.getElementById(t).style.display="none";
-  });
-  document.getElementById(id).style.display="block";
-  if(id==="list"){setFilters();renderList();}
-  if(id==="stats"){renderStats();}
+document.querySelectorAll('.tabContent').forEach(e=>e.classList.add('hidden'));
+document.getElementById(id).classList.remove('hidden');
+document.querySelectorAll('.tab button').forEach(b=>b.classList.remove('active'));
+event.target.classList.add('active');
 }
 
-/* 日付生成 */
-for(let i=1;i<=31;i++){
-  days.innerHTML+=`<label><input type="checkbox" value="${i}">${i}</label>`;
-  m_days.innerHTML+=`<label><input type="checkbox" value="${i}">${i}</label>`;
-}
-
-/* 日次保存 */
 function saveDaily(){
-  let dayArr=[];
-  document.querySelectorAll("#days input").forEach(el=>{
-    if(el.checked) dayArr.push(el.value);
-  });
-
-  let file=photo.files[0];
-  let reader=new FileReader();
-
-  if(file){
-    reader.onload=function(){save(reader.result);}
-    reader.readAsDataURL(file);
-  }else{
-    save("");
-  }
-
-  function save(img){
-    let data={
-      id: currentId || Date.now(),
-      date:date.value,
-      patient:patient.value,
-      nurse:nurse.value,
-      check:check.value,
-      record:record.value,
-      note:note.value,
-      fix:fix.checked,
-      confirm:confirm.checked,
-      同行:同行.checked,
-      days:dayArr,
-      img:img
-    };
-
-    if(currentId){
-      dailyData = dailyData.map(d=>d.id===currentId?data:d);
-    }else{
-      dailyData.push(data);
-    }
-
-    localStorage.setItem("daily",JSON.stringify(dailyData));
-    alert("保存OK");
-    currentId=null;
-  }
+let mode=document.getElementById('inputMode').value;
+let d={id:Date.now(),date:date.value,patient:patient.value,nurse:nurse.value,miss:miss.value,progress:progress.value,note:note.value,contact:contact.checked,confirm:confirm.checked,同行:同行.checked};
+if(mode==='new'){daily.push(d);} else {daily.push(d);}
+localStorage.setItem('daily',JSON.stringify(daily));
+alert('日次データを保存しました');
+renderCalendar();updatePatient();renderList();
+if(mode==='continuous'){date.value='';miss.value='';progress.value='';note.value='';contact.checked=false;confirm.checked=false;同行.checked=false;}
 }
 
-/* 月次保存 */
 function saveMonthly(){
-  let days=[];
-  document.querySelectorAll("#m_days input").forEach(el=>{
-    if(el.checked) days.push(el.value);
-  });
-
-  let data={
-    patient:m_patient.value,
-    month:m_month.value,
-    rep:rep.checked,
-    plan:plan.checked,
-    bedsore:bedsore.checked,
-    next:next.checked,
-    days:days
-  };
-
-  monthlyData.push(data);
-  localStorage.setItem("monthly",JSON.stringify(monthlyData));
-  alert("保存OK");
+let m={id:Date.now(),patient:monthPatient.value,month:month.value,report:report.checked,plan:plan.checked,bedsore:bedsore.checked,next:next.checked};
+monthly.push(m);
+localStorage.setItem('monthly',JSON.stringify(monthly));
+alert('月次データを保存しました');
+renderMonthCalendar();renderList();
 }
 
-/* 削除 */
-function deleteDaily(){
-  if(!currentId) return alert("削除対象なし");
-  dailyData = dailyData.filter(d=>d.id!==currentId);
-  localStorage.setItem("daily",JSON.stringify(dailyData));
-  location.reload();
+function renderCalendar(){
+let html='<div class="grid">';
+for(let i=1;i<=31;i++){
+let c=daily.some(d=>new Date(d.date).getDate()==i);
+html+=`<div>${c?'✓':'□'}${i}</div>`;
+}
+html+='</div>';
+dailyCalendar.innerHTML=html;
 }
 
-/* フィルター */
-function setFilters(){
-  let patients=[...new Set(dailyData.map(d=>d.patient))];
-  let nurses=[...new Set(dailyData.map(d=>d.nurse))];
-
-  filterPatient.innerHTML='<option value="">全患者</option>';
-  filterNurse.innerHTML='<option value="">全看護師</option>';
-
-  patients.forEach(p=>filterPatient.innerHTML+=`<option>${p}</option>`);
-  nurses.forEach(n=>filterNurse.innerHTML+=`<option>${n}</option>`);
+function renderMonthCalendar(){
+let html='<div class="grid">';
+for(let i=1;i<=12;i++){
+let c=monthly.some(m=>new Date(m.month).getMonth()+1==i);
+html+=`<div>${c?'✓':'□'}${i}月</div>`;
+}
+html+='</div>';
+monthCalendar.innerHTML=html;
 }
 
-/* 一覧 */
 function renderList(){
-  let fp=filterPatient.value;
-  let fn=filterNurse.value;
-
-  let html="";
-
-  dailyData
-  .filter(d=>(!fp||d.patient===fp)&&(!fn||d.nurse===fn))
-  .forEach(d=>{
-
-    let miss=[];
-    if(!d.check) miss.push("チェック");
-    if(!d.record) miss.push("経過");
-    if(!d.note) miss.push("備考");
-
-    html+=`
-    <div class="list-item" onclick="loadDaily(${d.id})">
-    ${d.date}｜${d.patient}｜${d.nurse}
-    ${miss.length?`<span class="miss">【未:${miss.join(",")}】</span>`:""}
-    </div>`;
-  });
-
-  listData.innerHTML=html;
+let fp=filterPatient.value;
+let fn=filterNurse.value;
+let html='';
+daily.filter(d=>(!fp||d.patient.includes(fp))&&(!fn||d.nurse.includes(fn)))
+.forEach(d=>{
+html+=`<div onclick="loadDaily(${d.id})">${d.date} ${d.patient} ${d.nurse}</div>`;
+});
+monthly.forEach(m=>{
+html+=`<div>${m.month} ${m.patient} 月次</div>`;
+});
+listArea.innerHTML=html;
 }
 
-/* 読み込み */
 function loadDaily(id){
-  let d=dailyData.find(x=>x.id===id);
-  currentId=id;
-
-  date.value=d.date;
-  patient.value=d.patient;
-  nurse.value=d.nurse;
-  check.value=d.check;
-  record.value=d.record;
-  note.value=d.note;
-
-  fix.checked=d.fix;
-  confirm.checked=d.confirm;
-
-  showTab("daily");
+let d=daily.find(x=>x.id==id);
+showTab('daily');
+date.value=d.date;patient.value=d.patient;nurse.value=d.nurse;
+miss.value=d.miss;progress.value=d.progress;note.value=d.note;
+contact.checked=d.contact;confirm.checked=d.confirm;同行.checked=d.同行;
 }
 
-/* 統計 */
-function renderStats(){
-  let html="";
-  let missList=[];
-
-  dailyData.forEach(d=>{
-    let m=[];
-    if(!d.check) m.push("チェック");
-    if(!d.record) m.push("経過");
-    if(!d.note) m.push("備考");
-
-    if(m.length){
-      missList.push(`${d.date} ${d.patient} → ${m.join(",")}`);
-    }
-  });
-
-  html+=`<h4>総件数：${dailyData.length}</h4>`;
-  html+=`<h4>未入力一覧</h4>`;
-
-  missList.forEach(x=> html+=`<div>${x}</div>`);
-
-  statsData.innerHTML=html;
+function calcStats(){
+let res={連絡漏れ:0,確認漏れ:0,同行漏れ:0};
+daily.forEach(d=>{
+if(!d.contact)res.連絡漏れ++;
+if(!d.confirm)res.確認漏れ++;
+if(!d.同行)res.同行漏れ++;
+});
+statsArea.textContent=JSON.stringify(res,null,2);
 }
 
-/* 出力 */
-function exportStats(){
-  let text="";
-  dailyData.forEach(d=>{
-    text+=`${d.date} ${d.patient}\n`;
-  });
-  navigator.clipboard.writeText(text);
-  alert("コピーしました");
+function downloadStats(){
+let blob=new Blob([statsArea.textContent]);
+let a=document.createElement('a');
+a.href=URL.createObjectURL(blob);
+a.download='stats.txt';a.click();
 }
 
-/* 設定 */
-function changeColor(c){
-  document.documentElement.style.setProperty("--main",c);
+function updatePatient(){
+let names=[...new Set(daily.map(d=>d.patient))];
+monthPatient.innerHTML=names.map(n=>`<option>${n}</option>`).join('');
 }
-function changeSize(s){
-  document.documentElement.style.setProperty("--text",s);
-}
-function resetAll(){
-  localStorage.clear();
-  location.reload();
-}
+
+function setColor(c){document.documentElement.style.setProperty('--main',c)}
+function setFont(f){document.body.style.fontSize=f+'px'}
+function resetData(){localStorage.clear();location.reload();}
+
+renderCalendar();renderMonthCalendar();renderList();updatePatient();
 </script>
-
 </body>
 </html>
