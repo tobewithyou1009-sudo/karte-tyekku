@@ -17,6 +17,7 @@ button{background:var(--main);color:#fff;border:none}
 .tab button.active{background:var(--main);color:#fff}
 .hidden{display:none}
 .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+img{max-width:100%;margin-top:5px;border-radius:8px}
 </style>
 </head>
 <body>
@@ -45,6 +46,8 @@ button{background:var(--main);color:#fff;border:none}
 <label><input type="checkbox" id="contact">修正連絡</label>
 <label><input type="checkbox" id="confirm">修正確認</label>
 <label><input type="checkbox" id="同行">同行</label>
+<input type="file" id="photo" accept="image/*" onchange="previewPhoto(event)">
+<div id="photoPreview"></div>
 <button onclick="saveDaily()">保存</button>
 <div id="dailyCalendar"></div>
 </div>
@@ -97,6 +100,7 @@ button{background:var(--main);color:#fff;border:none}
 <script>
 let daily=JSON.parse(localStorage.getItem('daily')||'[]');
 let monthly=JSON.parse(localStorage.getItem('monthly')||'[]');
+let photoData='';
 
 function showTab(id){
 document.querySelectorAll('.tabContent').forEach(e=>e.classList.add('hidden'));
@@ -105,14 +109,22 @@ document.querySelectorAll('.tab button').forEach(b=>b.classList.remove('active')
 event.target.classList.add('active');
 }
 
+function previewPhoto(event){
+let reader=new FileReader();
+reader.onload=function(){photoData=reader.result;photoPreview.innerHTML=`<img src='${photoData}'>`;}
+reader.readAsDataURL(event.target.files[0]);
+}
+
 function saveDaily(){
 let mode=document.getElementById('inputMode').value;
-let d={id:Date.now(),date:date.value,patient:patient.value,nurse:nurse.value,miss:miss.value,progress:progress.value,note:note.value,contact:contact.checked,confirm:confirm.checked,同行:同行.checked};
+let d={id:Date.now(),date:date.value,patient:patient.value,nurse:nurse.value,miss:miss.value,progress:progress.value,note:note.value,contact:contact.checked,confirm:confirm.checked,同行:同行.checked,photo:photoData};
 if(mode==='new'){daily.push(d);} else {daily.push(d);}
 localStorage.setItem('daily',JSON.stringify(daily));
 alert('日次データを保存しました');
 renderCalendar();updatePatient();renderList();
-if(mode==='continuous'){date.value='';miss.value='';progress.value='';note.value='';contact.checked=false;confirm.checked=false;同行.checked=false;}
+if(mode==='continuous'){
+date.value='';miss.value='';progress.value='';note.value='';contact.checked=false;confirm.checked=false;同行.checked=false;photoData='';photoPreview.innerHTML='';
+}
 }
 
 function saveMonthly(){
@@ -163,6 +175,7 @@ showTab('daily');
 date.value=d.date;patient.value=d.patient;nurse.value=d.nurse;
 miss.value=d.miss;progress.value=d.progress;note.value=d.note;
 contact.checked=d.contact;confirm.checked=d.confirm;同行.checked=d.同行;
+photoData=d.photo||'';photoPreview.innerHTML=photoData?`<img src='${photoData}'>`:'';
 }
 
 function calcStats(){
